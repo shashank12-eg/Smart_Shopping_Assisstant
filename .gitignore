@@ -1,0 +1,16 @@
+# Dependencies
+frontend/node_modules/
+backend/venv/
+backend/__pycache__/
+*.pyc
+
+# Production build
+frontend/dist/
+
+# Database
+database/*.db
+
+# Environment variables & IDE
+.env
+.vscode/
+.idea/
