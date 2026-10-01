@@ -1,0 +1,1 @@
+from providers.provider_manager import provider_manager, ProductProviderManager
