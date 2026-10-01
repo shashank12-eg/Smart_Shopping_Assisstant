@@ -62,9 +62,9 @@ Configure `.env` in `backend/`:
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
-DB_PASSWORD=root
+DB_PASSWORD=your_mysql_password
 DB_NAME=smartshopping
-SECRET_KEY=smartshopping-secret-key-cse-2026
+SECRET_KEY=your_super_secret_session_key_here
 
 # Optional: Add provider API keys if available
 AMAZON_API_KEY=
