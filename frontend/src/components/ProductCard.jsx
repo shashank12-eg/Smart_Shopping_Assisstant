@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatINR } from '../utils/formatters';
-import { Heart, Star, Sliders, ArrowRight } from 'lucide-react';
+import { Heart, Star, Sliders, ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
@@ -34,6 +34,11 @@ export default function ProductCard({ product, onWishlistToggle, onCompareToggle
     if (onCompareToggle) onCompareToggle(product);
   };
 
+  const displayPrice = product.lowest_available_price || product.price;
+  const retailerName = product.retailer || 'Official Retailer';
+  const changePct     = product.price_change_pct || 0;
+  const reviewCount   = product.review_count || 120;
+
   return (
     <div className="glass-card rounded-2xl overflow-hidden flex flex-col justify-between group relative border border-slate-800 hover:border-cyan-500/40">
       <div className="relative p-5 bg-slate-900/60 text-center flex items-center justify-center h-52 overflow-hidden">
@@ -44,10 +49,15 @@ export default function ProductCard({ product, onWishlistToggle, onCompareToggle
         />
 
         {/* Top Badges */}
-        <div className="absolute top-3 left-3 flex items-center space-x-2">
-          <span className="text-[11px] font-semibold bg-slate-900/80 text-cyan-400 border border-slate-700 px-2.5 py-0.5 rounded-full backdrop-blur-md">
+        <div className="absolute top-3 left-3 flex items-center space-x-1.5">
+          <span className="text-[10px] font-semibold bg-slate-900/90 text-cyan-400 border border-slate-700 px-2.5 py-0.5 rounded-full backdrop-blur-md">
             {product.category}
           </span>
+          {retailerName && (
+            <span className="text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full backdrop-blur-md">
+              {retailerName}
+            </span>
+          )}
         </div>
 
         <button 
@@ -70,6 +80,7 @@ export default function ProductCard({ product, onWishlistToggle, onCompareToggle
             <div className="flex items-center space-x-1 text-amber-400">
               <Star className="w-3.5 h-3.5 fill-amber-400" />
               <span className="font-bold text-white">{product.rating}</span>
+              <span className="text-[10px] text-slate-500">({reviewCount})</span>
             </div>
           </div>
 
@@ -85,17 +96,28 @@ export default function ProductCard({ product, onWishlistToggle, onCompareToggle
         <div className="pt-3 border-t border-slate-800/80 space-y-3">
           <div className="flex items-baseline justify-between">
             <div>
-              <span className="text-xs text-slate-500 block">Current Price</span>
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider block">Lowest Price</span>
               <span className="text-xl font-extrabold text-white tracking-tight">
-                {formatINR(product.price)}
+                {formatINR(displayPrice)}
               </span>
             </div>
+
+            {changePct !== 0 && (
+              <span className={`inline-flex items-center space-x-0.5 text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                changePct < 0 
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                  : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+              }`}>
+                {changePct < 0 ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+                <span>{Math.abs(changePct)}%</span>
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
             <Link
               to={`/product/${product.id}`}
-              className="w-full flex items-center justify-center space-x-1.5 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-semibold text-xs py-2.5 px-3 rounded-xl transition-all shadow-md shadow-cyan-500/10"
+              className="w-full flex items-center justify-center space-x-1.5 bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all shadow-md shadow-cyan-500/10"
             >
               <span>Analyze</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -105,7 +127,7 @@ export default function ProductCard({ product, onWishlistToggle, onCompareToggle
               onClick={handleCompare}
               className={`w-full flex items-center justify-center space-x-1.5 text-xs py-2.5 px-3 rounded-xl font-medium border transition-all ${
                 isCompared
-                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 font-bold'
                   : 'bg-slate-900/60 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white'
               }`}
             >

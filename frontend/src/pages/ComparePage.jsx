@@ -99,6 +99,27 @@ export default function ComparePage() {
       return;
     }
 
+    // Same-category enforcement (client-side)
+    if (products.length > 0) {
+      const norm = (c = '') => {
+        const lc = c.toLowerCase().trim();
+        if (['mobile', 'smartphone', 'phone', 'mobiles'].some((k) => lc.includes(k))) return 'mobiles';
+        if (['laptop', 'notebook', 'laptops'].some((k) => lc.includes(k))) return 'laptops';
+        if (['tablet', 'ipad', 'tablets'].some((k) => lc.includes(k))) return 'tablets';
+        if (['watch', 'smartwatch', 'smart watches'].some((k) => lc.includes(k))) return 'smartwatches';
+        if (['headphone', 'earphone', 'earbud', 'headphones'].some((k) => lc.includes(k))) return 'headphones';
+        return lc;
+      };
+      if (norm(products[0].category) !== norm(product.category)) {
+        showAlert(
+          `Only products from the same category can be compared. ` +
+          `You are comparing "${products[0].category}" products — ` +
+          `you cannot add a "${product.category}" product.`
+        );
+        return;
+      }
+    }
+
     const res = addCompareId(product.id);
     if (!res.success) {
       showAlert(res.message);
@@ -239,19 +260,27 @@ export default function ComparePage() {
 
       {/* BEST OVERALL RECOMMENDATION BANNER */}
       {bestOverall && products.length >= 2 && (
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-cyan-500/20 via-indigo-500/20 to-purple-500/20 border border-cyan-500/40 shadow-xl flex items-start space-x-4">
-          <div className="p-3 rounded-2xl bg-cyan-500 text-slate-950 flex-shrink-0">
-            <Award className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2 mb-1">
-              <span className="text-xs font-black uppercase tracking-wider text-cyan-400">Best Overall Recommendation</span>
-              <span className="text-xs font-bold text-white bg-cyan-500/20 border border-cyan-500/40 px-2.5 py-0.5 rounded-full">
-                Winner: {bestOverall.product_name}
-              </span>
+        <div className="p-6 rounded-2xl bg-gradient-to-r from-cyan-500/20 via-indigo-500/20 to-purple-500/20 border border-cyan-500/40 shadow-xl space-y-3">
+          <div className="flex items-start space-x-4">
+            <div className="p-3 rounded-2xl bg-cyan-500 text-slate-950 flex-shrink-0">
+              <Award className="w-6 h-6" />
             </div>
-            <p className="text-xs text-slate-200 leading-relaxed">{bestOverall.reason}</p>
+            <div className="flex-1">
+              <div className="flex items-center space-x-2 mb-1">
+                <span className="text-xs font-black uppercase tracking-wider text-cyan-400">Top Rated + Best Value</span>
+                <span className="text-xs font-bold text-white bg-cyan-500/20 border border-cyan-500/40 px-2.5 py-0.5 rounded-full">
+                  Winner: {bestOverall.product_name}
+                  {bestOverall.score && <span className="ml-1 text-cyan-300">({bestOverall.score}/100)</span>}
+                </span>
+              </div>
+              <p className="text-xs text-slate-200 leading-relaxed">{bestOverall.reason}</p>
+            </div>
           </div>
+          {bestOverall.scoring_methodology && (
+            <div className="text-[11px] text-slate-400 bg-slate-900/60 rounded-xl p-3 border border-slate-800">
+              <strong className="text-slate-300">Scoring methodology:</strong> {bestOverall.scoring_methodology}
+            </div>
+          )}
         </div>
       )}
 
@@ -360,8 +389,46 @@ export default function ComparePage() {
                 <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Warranty</td>
                 {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 text-slate-400">{p.warranty || 'N/A'}</td>)}
               </tr>
+              {/* PRICE INTELLIGENCE ROWS */}
+              <tr className="bg-slate-950/60">
+                <td className="p-4 font-bold text-cyan-400 text-[11px] uppercase tracking-wider" colSpan={products.length + 1}>
+                  Price Intelligence
+                </td>
+              </tr>
+              <tr className="hover:bg-slate-900/40">
+                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Historical Lowest</td>
+                {products.map((p) => (
+                  <td key={p.id} className="p-4 text-center border-l border-slate-800/60 font-extrabold text-emerald-400">
+                    {p.historical_lowest ? formatINR(p.historical_lowest) : <span className="text-slate-600 font-normal text-[11px]">No history</span>}
+                  </td>
+                ))}
+              </tr>
+              <tr className="hover:bg-slate-900/40">
+                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Historical Average</td>
+                {products.map((p) => (
+                  <td key={p.id} className="p-4 text-center border-l border-slate-800/60 font-semibold text-slate-200">
+                    {p.historical_average ? formatINR(p.historical_average) : <span className="text-slate-600 text-[11px]">No history</span>}
+                  </td>
+                ))}
+              </tr>
+              <tr className="hover:bg-slate-900/40">
+                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Price vs Average</td>
+                {products.map((p) => {
+                  const pct = p.price_vs_avg_pct;
+                  return (
+                    <td key={p.id} className="p-4 text-center border-l border-slate-800/60 font-bold">
+                      {pct != null
+                        ? <span className={pct < 0 ? 'text-emerald-400' : pct > 0 ? 'text-rose-400' : 'text-slate-400'}>
+                            {pct > 0 ? '+' : ''}{pct}%
+                          </span>
+                        : <span className="text-slate-600 text-[11px]">No history</span>
+                      }
+                    </td>
+                  );
+                })}
+              </tr>
               <tr className="bg-slate-900/80">
-                <td className="p-4 font-bold text-cyan-400">Action</td>
+                <td className="p-4 font-bold text-cyan-400">Full Analysis</td>
                 {products.map((p) => (
                   <td key={p.id} className="p-4 text-center border-l border-slate-800/60">
                     <button

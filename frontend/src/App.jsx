@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './layouts/Navbar';
 import Footer from './layouts/Footer';
+import ScrollToTop from './components/ScrollToTop';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -13,6 +14,7 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import ComparePage from './pages/ComparePage';
 import WishlistPage from './pages/WishlistPage';
 import ProfilePage from './pages/ProfilePage';
+import URLAnalyzePage from './pages/URLAnalyzePage';
 
 // Protected Route Wrapper
 function ProtectedRoute({ children }) {
@@ -51,6 +53,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <div className="min-h-screen flex flex-col justify-between bg-[#090d16] text-slate-100 font-['Plus_Jakarta_Sans',sans-serif]">
           <Navbar />
           <main className="flex-1">
@@ -66,6 +69,7 @@ export default function App() {
               <Route path="/compare" element={<ProtectedRoute><ComparePage /></ProtectedRoute>} />
               <Route path="/wishlist" element={<ProtectedRoute><WishlistPage /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+              <Route path="/analyze-url" element={<ProtectedRoute><URLAnalyzePage /></ProtectedRoute>} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

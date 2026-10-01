@@ -61,8 +61,29 @@ export const api = {
 
   priceAlerts: {
     get: () => fetchAPI('/price-alerts'),
-    create: (productId, targetPrice) => fetchAPI('/price-alerts', { method: 'POST', body: JSON.stringify({ product_id: productId, target_price: targetPrice }) }),
+    create: (productId, targetPrice, dropPercentage) =>
+      fetchAPI('/price-alerts', {
+        method: 'POST',
+        body: JSON.stringify({
+          product_id: productId,
+          target_price: targetPrice,
+          drop_percentage: dropPercentage || null,
+        }),
+      }),
+    toggle: (id, status) =>
+      fetchAPI(`/price-alerts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      }),
     delete: (id) => fetchAPI(`/price-alerts/${id}`, { method: 'DELETE' }),
+  },
+
+  urlAnalyze: {
+    analyze: (url) =>
+      fetchAPI('/url-analyze', {
+        method: 'POST',
+        body: JSON.stringify({ url }),
+      }),
   },
 
   profile: {

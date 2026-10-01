@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, Mail, Lock, AlertCircle, ArrowRight } from 'lucide-react';
 
-const GMAIL_REGEX = /^[A-Za-z0-9._%+-]+@gmail\.com$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -17,8 +17,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    if (!GMAIL_REGEX.test(email.trim())) {
-      setError('Invalid Gmail address or password.');
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setError('Please enter a valid email address.');
       return;
     }
 

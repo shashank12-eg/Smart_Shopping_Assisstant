@@ -145,6 +145,27 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* URL ANALYZER SHORTCUT */}
+      <section className="glass-panel p-5 rounded-3xl border border-cyan-500/20 bg-gradient-to-r from-cyan-500/5 to-indigo-500/5">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <span className="text-cyan-400">🔗</span> Got a product URL?
+            </h3>
+            <p className="text-xs text-slate-400">
+              Paste any Amazon, Flipkart, Meesho, or Myntra URL to get instant AI price intelligence.
+            </p>
+          </div>
+          <Link
+            to="/analyze-url"
+            className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center space-x-2 flex-shrink-0 shadow-md"
+          >
+            <span>Analyze a URL</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
+
       {/* POPULAR PRODUCTS GRID */}
       <section className="space-y-6">
         <div className="flex items-center justify-between">
@@ -152,7 +173,7 @@ export default function HomePage() {
             <h2 className="text-xl font-bold text-white tracking-tight">
               {selectedCategory === 'All' ? 'Popular Products' : `${selectedCategory} Products`}
             </h2>
-            <p className="text-xs text-slate-400">Fetched directly from SQLite backend database</p>
+            <p className="text-xs text-slate-400">Fetched from MySQL product database</p>
           </div>
 
           <Link

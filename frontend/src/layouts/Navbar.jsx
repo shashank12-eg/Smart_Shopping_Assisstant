@@ -11,7 +11,8 @@ import {
   User, 
   LogOut, 
   Menu, 
-  X 
+  X,
+  Link2
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -87,6 +88,16 @@ export default function Navbar() {
             >
               <Sliders className="w-4 h-4" />
               <span>Compare</span>
+            </Link>
+
+            <Link
+              to="/analyze-url"
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                isActive('/analyze-url') ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'text-slate-300 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <Link2 className="w-4 h-4" />
+              <span>URL Analyze</span>
             </Link>
           </nav>
         )}
@@ -165,6 +176,7 @@ export default function Navbar() {
               <Link to="/browse" onClick={() => setMobileOpen(false)} className="block py-2 text-sm text-slate-200">Browse All</Link>
               <Link to="/wishlist" onClick={() => setMobileOpen(false)} className="block py-2 text-sm text-slate-200">Wishlist</Link>
               <Link to="/compare" onClick={() => setMobileOpen(false)} className="block py-2 text-sm text-slate-200">Compare</Link>
+              <Link to="/analyze-url" onClick={() => setMobileOpen(false)} className="block py-2 text-sm text-cyan-400 font-semibold">URL Analyze</Link>
               <Link to="/profile" onClick={() => setMobileOpen(false)} className="block py-2 text-sm text-slate-200">My Profile</Link>
               <button onClick={() => { setMobileOpen(false); handleLogout(); }} className="w-full text-left py-2 text-sm text-rose-400 font-semibold">Logout</button>
             </>

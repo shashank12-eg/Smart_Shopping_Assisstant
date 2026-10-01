@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserPlus, User, Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-const GMAIL_REGEX = /^[A-Za-z0-9._%+-]+@gmail\.com$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/;
 
 export default function SignupPage() {
   const { signup } = useAuth();
@@ -24,8 +24,8 @@ export default function SignupPage() {
       return;
     }
 
-    if (!GMAIL_REGEX.test(email.trim())) {
-      setError('Please enter a valid Gmail address ending in @gmail.com.');
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setError('Please enter a valid email address.');
       return;
     }
 
