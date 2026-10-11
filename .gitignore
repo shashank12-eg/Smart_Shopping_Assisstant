@@ -7,9 +7,6 @@ backend/__pycache__/
 # Production build
 frontend/dist/
 
-# Database
-database/*.db
-
 # Environment variables & IDE
 .env
 .vscode/
