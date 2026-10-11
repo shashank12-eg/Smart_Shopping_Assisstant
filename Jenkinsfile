@@ -26,8 +26,8 @@ pipeline {
 
         stage('Backend Syntax Check') {
             steps {
-                bat 'python -m compileall -q backend'
-            }
+                bat 'py -3 -m compileall -q backend'
+                }
         }
 
         stage('Package Build Artifacts') {
