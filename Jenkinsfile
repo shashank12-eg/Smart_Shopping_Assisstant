@@ -26,7 +26,7 @@ pipeline {
 
         stage('Backend Syntax Check') {
             steps {
-                bat 'py -3 -m compileall -q backend'
+                bat '"C:\\Users\\SHASHANK\\AppData\\Local\\Python\\bin\\python.exe" -m compileall -q backend'
                 }
         }
 
