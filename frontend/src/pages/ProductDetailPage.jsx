@@ -29,7 +29,9 @@ import {
   ShieldCheck, 
   ExternalLink,
   CheckCircle,
-  HelpCircle
+  HelpCircle,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
 
 import { getCompareIds, addCompareId } from '../utils/compareStorage';
@@ -153,7 +155,8 @@ export default function ProductDetailPage() {
     resale_projections,
     product_lifetime,
     ownership_cost,
-    ai_advisor
+    ai_advisor,
+    related_products = []
   } = data;
 
   const specExplanations = {
@@ -407,6 +410,81 @@ export default function ProductDetailPage() {
           </button>
         </form>
       </section>
+
+      {/* 13. RELATED & ALTERNATIVE PRODUCTS */}
+      {related_products && related_products.length > 0 && (
+        <section className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-cyan-400" />
+                <span>Related &amp; Alternative Products</span>
+              </h3>
+              <p className="text-xs text-slate-400">
+                Compare other top-rated {product.category || 'products'} with real-time price tracking
+              </p>
+            </div>
+            <button
+              onClick={() => navigate(`/browse?category=${encodeURIComponent(product.category || '')}`)}
+              className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center space-x-1"
+            >
+              <span>Explore All {product.category || 'Category'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-2">
+            {related_products.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => {
+                  navigate(`/product/${item.id}`);
+                  window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                }}
+                className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/40 hover:bg-slate-900 transition-all cursor-pointer flex flex-col justify-between group space-y-3"
+              >
+                <div className="flex items-start space-x-3">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-16 h-16 object-contain bg-slate-950 p-1.5 rounded-xl border border-slate-800/80 group-hover:scale-105 transition-transform"
+                  />
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                      {item.brand}
+                    </span>
+                    <h4 className="text-xs font-bold text-white line-clamp-2 group-hover:text-cyan-300 transition-colors">
+                      {item.name}
+                    </h4>
+                    <div className="flex items-center space-x-1 text-[11px] text-amber-400">
+                      <Star className="w-3 h-3 fill-amber-400" />
+                      <span>{item.rating || '4.5'}</span>
+                      <span className="text-slate-500">({item.review_count || 120})</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                  <div>
+                    <span className="text-xs font-extrabold text-white">
+                      {formatINR(item.price)}
+                    </span>
+                    {item.previous_price && Number(item.previous_price) > Number(item.price) && (
+                      <span className="text-[10px] text-slate-500 line-through ml-1.5">
+                        {formatINR(item.previous_price)}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] font-bold text-cyan-400 group-hover:translate-x-1 transition-transform flex items-center space-x-1">
+                    <span>View</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* SPEC EXPLANATION POPUP MODAL */}
       {selectedSpec && (

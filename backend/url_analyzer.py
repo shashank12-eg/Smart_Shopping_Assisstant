@@ -46,6 +46,25 @@ DEFAULT_CATEGORY_PRICES = {
     "Tablets": 29999.0,
 }
 
+def resolve_short_url(url_clean: str) -> str:
+    """Resolve short URLs like amzn.to, amzn.in, and dl.flipkart.com to their final destination."""
+    short_domains = ["amzn.to", "amzn.in", "dl.flipkart.com", "fkrt.it", "bit.ly"]
+    try:
+        parsed = urllib.parse.urlparse(url_clean)
+        hostname = (parsed.hostname or "").lower()
+        if any(sd in hostname for sd in short_domains) or (hostname.endswith("flipkart.com") and parsed.path.startswith("/s/")):
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "en-IN,en;q=0.9",
+            }
+            resp = requests.get(url_clean, headers=headers, timeout=8, allow_redirects=True)
+            if resp.status_code == 200:
+                return resp.url
+    except Exception:
+        pass
+    return url_clean
+
 def is_safe_retailer_url(url_str: str):
     """
     Validate URL to prevent SSRF and restrict to verified retailer domains.
@@ -57,6 +76,8 @@ def is_safe_retailer_url(url_str: str):
     url_clean = url_str.strip()
     if not (url_clean.startswith("http://") or url_clean.startswith("https://")):
         url_clean = "https://" + url_clean
+
+    url_clean = resolve_short_url(url_clean)
 
     try:
         parsed = urllib.parse.urlparse(url_clean)
@@ -97,6 +118,7 @@ def is_safe_retailer_url(url_str: str):
 def extract_product_identifier(url_str: str, retailer: str) -> dict:
     """
     Extract product identifier (e.g. ASIN for Amazon, PID for Flipkart) and clean title slug.
+    Also handles search URLs (?k=, ?q=).
     """
     parsed = urllib.parse.urlparse(url_str)
     path = parsed.path
@@ -106,33 +128,44 @@ def extract_product_identifier(url_str: str, retailer: str) -> dict:
     slug = None
 
     if retailer == "Amazon":
+        if "k" in query:
+            slug = query["k"][0].replace("+", " ")
         asin_match = re.search(r'/(?:dp|gp/product|product-reviews)/([A-Z0-9]{10})', path, re.IGNORECASE)
         if asin_match:
             extracted_id = asin_match.group(1).upper()
-        parts = [p for p in path.split('/') if p and not p.startswith('dp') and len(p) > 3]
-        if parts:
-            slug = parts[0].replace('-', ' ')
+        if not slug:
+            parts = [p for p in path.split('/') if p and not p.startswith(('dp', 'gp', 'product', 's')) and len(p) > 2]
+            if parts:
+                slug = parts[0].replace('-', ' ')
 
     elif retailer == "Flipkart":
+        if "q" in query:
+            slug = query["q"][0].replace("+", " ")
         if "pid" in query:
             extracted_id = query["pid"][0]
         else:
             p_match = re.search(r'/p/([a-zA-Z0-9]+)', path)
             if p_match:
                 extracted_id = p_match.group(1)
-        parts = [p for p in path.split('/') if p and p != 'p' and not p.startswith('itm')]
-        if parts:
-            slug = parts[0].replace('-', ' ')
+        if not slug:
+            parts = [p for p in path.split('/') if p and p not in ('p', 's', 'search') and not p.startswith('itm')]
+            if parts:
+                slug = parts[0].replace('-', ' ')
 
     elif retailer == "Meesho":
+        if "q" in query:
+            slug = query["q"][0].replace("+", " ")
         m_match = re.search(r'/p/([a-zA-Z0-9]+)', path)
         if m_match:
             extracted_id = m_match.group(1)
-        parts = [p for p in path.split('/') if p and p != 'p']
-        if parts:
-            slug = parts[0].replace('-', ' ')
+        if not slug:
+            parts = [p for p in path.split('/') if p and p not in ('p', 'search')]
+            if parts:
+                slug = parts[0].replace('-', ' ')
 
     elif retailer == "Myntra":
+        if "rawQuery" in query:
+            slug = query["rawQuery"][0].replace("+", " ")
         m_match = re.search(r'/(\d+)/buy', path)
         if m_match:
             extracted_id = m_match.group(1)
@@ -140,12 +173,15 @@ def extract_product_identifier(url_str: str, retailer: str) -> dict:
             digits = re.findall(r'\d+', path)
             if digits:
                 extracted_id = digits[-1]
-        parts = [p for p in path.split('/') if p and not p.isdigit() and p != 'buy']
-        if parts:
-            slug = parts[0].replace('-', ' ')
+        if not slug:
+            parts = [p for p in path.split('/') if p and not p.isdigit() and p not in ('buy', 'search')]
+            if parts:
+                slug = parts[0].replace('-', ' ')
 
     elif retailer == "Croma":
-        parts = [p for p in path.split('/') if p and not p.startswith('p-')]
+        if "q" in query:
+            slug = query["q"][0].replace("+", " ")
+        parts = [p for p in path.split('/') if p and not p.startswith('p-') and p != 'searchB']
         if parts:
             slug = parts[-1].replace('-', ' ')
         c_match = re.search(r'/p/(\d+)', path)
@@ -153,7 +189,9 @@ def extract_product_identifier(url_str: str, retailer: str) -> dict:
             extracted_id = c_match.group(1)
 
     elif retailer == "Reliance Digital":
-        parts = [p for p in path.split('/') if p and p != 'p']
+        if "q" in query:
+            slug = query["q"][0].replace("+", " ")
+        parts = [p for p in path.split('/') if p and p not in ('p', 'search')]
         if parts:
             slug = parts[-1].replace('-', ' ')
         r_match = re.search(r'/p/(\d+)', path)
@@ -213,53 +251,139 @@ def fetch_url_metadata(url_clean: str, retailer: str) -> dict:
     price = 0.0
     description = ""
 
-    # Attempt safe HTTP request with standard browser headers
+    # Realistic browser headers to prevent bot challenges (especially Amazon & Flipkart)
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-IN,en-GB;q=0.9,en;q=0.8",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
     }
 
     try:
-        resp = requests.get(url_clean, headers=headers, timeout=5, allow_redirects=True)
+        session = requests.Session()
+        resp = session.get(url_clean, headers=headers, timeout=8, allow_redirects=True)
         if resp.status_code == 200:
             html = resp.text
-            # Extract og:title or <title>
-            og_title = re.search(r'<meta\s+property=["\']og:title["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
-            if not og_title:
-                og_title = re.search(r'<meta\s+name=["\']title["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
-            if not og_title:
-                og_title = re.search(r'<title>([^<]+)</title>', html, re.IGNORECASE)
-            if og_title:
-                title = clean_product_title(og_title.group(1))
-
-            # Extract og:image
-            og_image = re.search(r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
-            if og_image:
-                image = og_image.group(1).strip()
-
-            # Extract og:description
-            og_desc = re.search(r'<meta\s+property=["\']og:description["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
-            if og_desc:
-                description = og_desc.group(1).strip()
-
-            # Extract price if available in meta tags
-            price_meta = re.search(r'<meta\s+property=["\']product:price:amount["\']\s+content=["\']([0-9.]+)["\']', html, re.IGNORECASE)
-            if price_meta:
+            url_clean = resp.url # update to resolved url
+            
+            # 1. Attempt JSON-LD extraction (Highly accurate for price and title)
+            import json
+            ld_matches = re.findall(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL | re.IGNORECASE)
+            for match in ld_matches:
                 try:
-                    price = float(price_meta.group(1))
-                except ValueError:
-                    price = 0.0
+                    data = json.loads(match.strip())
+                    if isinstance(data, list): data = data[0]
+                    
+                    if data.get("@type") == "Product" or "name" in data:
+                        if not title and data.get("name"):
+                            title = clean_product_title(data.get("name"))
+                        if not description and data.get("description"):
+                            description = data.get("description")
+                        if not image and data.get("image"):
+                            img = data.get("image")
+                            if isinstance(img, list) and img: image = img[0]
+                            elif isinstance(img, str): image = img
+                            
+                        offers = data.get("offers")
+                        if offers:
+                            if isinstance(offers, list): offers = offers[0]
+                            if offers.get("price") and price == 0.0:
+                                price = float(offers.get("price"))
+                except Exception:
+                    pass
 
-            # Fallback price regex in HTML (INR ₹ / Rs.)
+            # 2. Amazon Specific Extractors
+            if retailer == "Amazon":
+                # Title
+                if not title:
+                    amz_title = re.search(r'<span id="productTitle"[^>]*>([^<]+)</span>', html)
+                    if amz_title:
+                        title = clean_product_title(amz_title.group(1))
+
+                # Image
+                if not image:
+                    dyn = re.search(r'id="landingImage"[^>]+data-a-dynamic-image="([^"]+)"', html)
+                    if dyn:
+                        try:
+                            urls = list(json.loads(dyn.group(1).replace('&quot;', '"')).keys())
+                            if urls: image = urls[0]
+                        except Exception:
+                            pass
+                if not image:
+                    hires = re.search(r'id="landingImage"[^>]+data-old-hires="([^"]+)"', html)
+                    if hires and hires.group(1): image = hires.group(1).strip()
+                if not image:
+                    src_m = re.search(r'id="landingImage"[^>]+src="([^"]+)"', html)
+                    if src_m: image = src_m.group(1).strip()
+
+                # Price
+                if price == 0.0:
+                    pw = re.search(r'<span class="a-price-whole">([0-9,]+)', html)
+                    if pw:
+                        try:
+                            price = float(pw.group(1).replace(',', ''))
+                        except ValueError:
+                            pass
+                if price == 0.0:
+                    po = re.search(r'<span class="a-offscreen">[\u20B9\u0024Rs\.]*\s*([0-9,]+(?:\.[0-9]+)?)</span>', html)
+                    if po:
+                        try:
+                            price = float(po.group(1).replace(',', ''))
+                        except ValueError:
+                            pass
+
+                # Description
+                if not description:
+                    fb = re.search(r'<div id="feature-bullets"[^>]*>(.*?)</div>', html, re.DOTALL)
+                    if fb:
+                        bullets = re.findall(r'<span class="a-list-item">\s*([^<]+)\s*</span>', fb.group(1))
+                        if bullets:
+                            description = " ".join(b.strip() for b in bullets if b.strip() and "Make sure this fits" not in b)[:500]
+
+            # 3. Extract og:title or <title>
+            if not title:
+                og_title = re.search(r'<meta\s+property=["\']og:title["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+                if not og_title:
+                    og_title = re.search(r'<meta\s+name=["\']title["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+                if not og_title:
+                    og_title = re.search(r'<title>([^<]+)</title>', html, re.IGNORECASE)
+                if og_title:
+                    title = clean_product_title(og_title.group(1))
+
+            # 4. Extract og:image
+            if not image:
+                og_image = re.search(r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+                if og_image:
+                    image = og_image.group(1).strip()
+
+            # 5. Extract og:description
+            if not description:
+                og_desc = re.search(r'<meta\s+property=["\']og:description["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+                if og_desc:
+                    description = og_desc.group(1).strip()
+
+            # 6. Extract price if available in meta tags
+            if price == 0.0:
+                price_meta = re.search(r'<meta\s+property=["\']product:price:amount["\']\s+content=["\']([0-9.]+)["\']', html, re.IGNORECASE)
+                if price_meta:
+                    try:
+                        price = float(price_meta.group(1))
+                    except ValueError:
+                        pass
+
+            # 7. Fallback price regex in HTML (INR ₹ / Rs.)
             if price == 0.0:
                 price_match = re.search(r'(?:₹|Rs\.?)\s*([0-9,]{3,10})', html)
                 if price_match:
                     try:
                         price = float(price_match.group(1).replace(',', ''))
                     except ValueError:
-                        price = 0.0
-    except Exception:
+                        pass
+    except Exception as e:
         pass  # Fall back to URL slug
 
     # If title wasn't extracted from HTML, use search_slug from URL path
@@ -275,16 +399,20 @@ def fetch_url_metadata(url_clean: str, retailer: str) -> dict:
     if category not in DEFAULT_CATEGORY_IMAGES:
         category = "Mobiles"  # Default fallback category
 
-    # Set image if missing
+    # Detect brand
+    brand = detect_brand(title)
+
+    # Set image if missing (matching brand & category)
     if not image or not image.startswith("http"):
-        image = DEFAULT_CATEGORY_IMAGES.get(category, DEFAULT_CATEGORY_IMAGES["Mobiles"])
+        try:
+            from update_product_images import get_matching_image
+            image = get_matching_image(category, brand, 0)
+        except Exception:
+            image = DEFAULT_CATEGORY_IMAGES.get(category, DEFAULT_CATEGORY_IMAGES["Mobiles"])
 
     # Set price if missing
     if price <= 0:
         price = DEFAULT_CATEGORY_PRICES.get(category, 19999.0)
-
-    # Detect brand
-    brand = detect_brand(title)
 
     return {
         "title": title,

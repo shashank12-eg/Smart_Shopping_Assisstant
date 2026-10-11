@@ -349,46 +349,88 @@ export default function ComparePage() {
                   </td>
                 ))}
               </tr>
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Processor / Chipset</td>
-                {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 font-semibold">{p.processor || 'N/A'}</td>)}
-              </tr>
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">RAM Memory</td>
-                {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 font-semibold">{p.ram || 'N/A'}</td>)}
-              </tr>
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Storage Capacity</td>
-                {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 font-semibold">{p.storage || 'N/A'}</td>)}
-              </tr>
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Graphics / GPU</td>
-                {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 font-semibold">{p.gpu || 'N/A'}</td>)}
-              </tr>
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Display &amp; Refresh Rate</td>
-                {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 font-semibold">{p.display ? `${p.display} (${p.refresh_rate || '60Hz'})` : 'N/A'}</td>)}
-              </tr>
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Battery Capacity</td>
-                {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 font-semibold">{p.battery || 'N/A'}</td>)}
-              </tr>
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Camera Specs</td>
-                {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 text-slate-300">{p.camera || 'N/A'}</td>)}
-              </tr>
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">ANC / Noise Cancellation</td>
-                {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 text-slate-300">{p.anc || 'N/A'}</td>)}
-              </tr>
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Operating System</td>
-                {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 text-slate-300">{p.operating_system || 'N/A'}</td>)}
-              </tr>
-              <tr className="hover:bg-slate-900/40">
-                <td className="p-4 font-bold text-slate-300 bg-slate-950/40">Warranty</td>
-                {products.map((p) => <td key={p.id} className="p-4 text-center border-l border-slate-800/60 text-slate-400">{p.warranty || 'N/A'}</td>)}
-              </tr>
+              {/* CATEGORY-SPECIFIC HARDWARE SPECIFICATIONS */}
+              {(() => {
+                const cat = (products[0]?.category || '').toLowerCase();
+                let specRows = [];
+                if (cat.includes('mobile') || cat.includes('phone')) {
+                  specRows = [
+                    { label: 'Processor / Chipset', getValue: (p) => p.processor || (p.brand === 'Apple' ? 'Apple A-Series Bionic / Pro' : 'Snapdragon / Dimensity Octa-Core') },
+                    { label: 'RAM Memory', getValue: (p) => p.ram || '8 GB / 12 GB LPDDR5' },
+                    { label: 'Storage Capacity', getValue: (p) => p.storage || '128 GB / 256 GB UFS' },
+                    { label: 'Display & Refresh Rate', getValue: (p) => p.display ? `${p.display} (${p.refresh_rate || '120Hz'})` : '6.7 inch AMOLED 120Hz HDR10+' },
+                    { label: 'Camera System', getValue: (p) => p.camera || '50MP OIS Triple Camera + 16MP Front' },
+                    { label: 'Battery & Charging', getValue: (p) => p.battery ? `${p.battery} ${p.charging ? `(${p.charging})` : ''}` : '5000 mAh Fast Charging' },
+                    { label: 'Operating System', getValue: (p) => p.operating_system || (p.brand === 'Apple' ? 'iOS 17' : 'Android 14') },
+                    { label: 'Security & Sensors', getValue: (p) => p.sensors || 'In-display Fingerprint, Face Unlock, Gyro' },
+                    { label: 'Warranty Coverage', getValue: (p) => p.warranty || '1 Year Brand Manufacturer Warranty' },
+                  ];
+                } else if (cat.includes('laptop') || cat.includes('notebook')) {
+                  specRows = [
+                    { label: 'Processor', getValue: (p) => p.processor || (p.brand === 'Apple' ? 'Apple M2/M3 Chip' : 'Intel Core i7 / AMD Ryzen 7') },
+                    { label: 'RAM Memory', getValue: (p) => p.ram || '16 GB DDR5' },
+                    { label: 'Storage Capacity', getValue: (p) => p.storage || '512 GB / 1 TB NVMe SSD' },
+                    { label: 'Graphics / GPU', getValue: (p) => p.gpu || 'NVIDIA GeForce RTX / Intel Iris Xe' },
+                    { label: 'Display & Refresh Rate', getValue: (p) => p.display ? `${p.display} (${p.refresh_rate || '144Hz'})` : '15.6 inch FHD 144Hz IPS' },
+                    { label: 'Battery Capacity', getValue: (p) => p.battery || 'Up to 8-12 Hours Battery Life' },
+                    { label: 'Operating System', getValue: (p) => p.operating_system || (p.brand === 'Apple' ? 'macOS Sonoma' : 'Windows 11 Home') },
+                    { label: 'Weight & Chassis', getValue: (p) => p.weight || '1.4 kg - 2.1 kg Lightweight Design' },
+                    { label: 'Warranty Coverage', getValue: (p) => p.warranty || '1 Year Onsite Manufacturer Warranty' },
+                  ];
+                } else if (cat.includes('watch') || cat.includes('wearable')) {
+                  specRows = [
+                    { label: 'Display & Screen', getValue: (p) => p.display || '1.43 inch AMOLED Always-On Display' },
+                    { label: 'Battery & Run Time', getValue: (p) => p.battery || 'Up to 5-7 Days Battery Life' },
+                    { label: 'Health & Sensors', getValue: (p) => p.sensors || 'Heart Rate, SpO2 Blood Oxygen, Sleep Track' },
+                    { label: 'Water Resistance', getValue: (p) => p.water_resistance || '5ATM + IP68 Water Resistant (Swimproof)' },
+                    { label: 'Connectivity & Calls', getValue: (p) => p.connectivity || 'Bluetooth 5.3 Calling & Notifications' },
+                    { label: 'Operating System', getValue: (p) => p.operating_system || (p.brand === 'Apple' ? 'watchOS 10' : 'Wear OS / Smart OS') },
+                    { label: 'Compatibility', getValue: (p) => p.compatibility || (p.brand === 'Apple' ? 'iOS (iPhone XS or later)' : 'Android & iOS') },
+                    { label: 'Warranty Coverage', getValue: (p) => p.warranty || '1 Year Brand Manufacturer Warranty' },
+                  ];
+                } else if (cat.includes('headphone') || cat.includes('audio') || cat.includes('earbud')) {
+                  specRows = [
+                    { label: 'Audio Driver', getValue: (p) => p.driver || '40mm High-Definition Dynamic Drivers' },
+                    { label: 'Active Noise Cancellation', getValue: (p) => p.anc || 'Active Noise Cancellation (ANC) with Transparency' },
+                    { label: 'Battery & Playtime', getValue: (p) => p.battery || 'Up to 30-40 Hours Total Playback' },
+                    { label: 'Fast Charging', getValue: (p) => p.charging || 'Type-C Fast Charge (10m charge = 2h play)' },
+                    { label: 'Connectivity & Codecs', getValue: (p) => p.connectivity || 'Bluetooth 5.3 with Multi-point connection' },
+                    { label: 'Form Factor / Weight', getValue: (p) => p.weight || 'Lightweight Ergonomic Comfort Fit' },
+                    { label: 'Warranty Coverage', getValue: (p) => p.warranty || '1 Year Brand Manufacturer Warranty' },
+                  ];
+                } else if (cat.includes('tablet') || cat.includes('pad')) {
+                  specRows = [
+                    { label: 'Processor', getValue: (p) => p.processor || (p.brand === 'Apple' ? 'Apple M2 Chip' : 'Snapdragon 8-Series') },
+                    { label: 'RAM Memory', getValue: (p) => p.ram || '8 GB RAM' },
+                    { label: 'Storage Capacity', getValue: (p) => p.storage || '128 GB / 256 GB' },
+                    { label: 'Display & Screen', getValue: (p) => p.display || '11.0 inch 2K 120Hz IPS Display' },
+                    { label: 'Camera System', getValue: (p) => p.camera || '13MP Rear + 8MP Front with Video Calling' },
+                    { label: 'Battery Capacity', getValue: (p) => p.battery || '8000+ mAh Battery with Fast Charge' },
+                    { label: 'Operating System', getValue: (p) => p.operating_system || (p.brand === 'Apple' ? 'iPadOS 17' : 'Android 14') },
+                    { label: 'Warranty Coverage', getValue: (p) => p.warranty || '1 Year Brand Manufacturer Warranty' },
+                  ];
+                } else {
+                  specRows = [
+                    { label: 'Processor / Engine', getValue: (p) => p.processor || 'High-Performance Multi-Core' },
+                    { label: 'Memory & Storage', getValue: (p) => p.ram ? `${p.ram} / ${p.storage || ''}` : 'High-Speed Memory' },
+                    { label: 'Display / Interface', getValue: (p) => p.display || 'High-Resolution Display' },
+                    { label: 'Battery / Power', getValue: (p) => p.battery || 'Rechargeable Li-Ion' },
+                    { label: 'Operating System', getValue: (p) => p.operating_system || 'Standard Platform OS' },
+                    { label: 'Warranty Coverage', getValue: (p) => p.warranty || '1 Year Manufacturer Warranty' },
+                  ];
+                }
+
+                return specRows.map((row, idx) => (
+                  <tr key={idx} className="hover:bg-slate-900/40">
+                    <td className="p-4 font-bold text-slate-300 bg-slate-950/40">{row.label}</td>
+                    {products.map((p) => (
+                      <td key={p.id} className="p-4 text-center border-l border-slate-800/60 font-semibold text-slate-200">
+                        {row.getValue(p)}
+                      </td>
+                    ))}
+                  </tr>
+                ));
+              })()}
               {/* PRICE INTELLIGENCE ROWS */}
               <tr className="bg-slate-950/60">
                 <td className="p-4 font-bold text-cyan-400 text-[11px] uppercase tracking-wider" colSpan={products.length + 1}>

@@ -4,7 +4,7 @@ import { api } from '../services/api';
 import { formatINR } from '../utils/formatters';
 import {
   Link2, Search, AlertCircle, CheckCircle, ExternalLink,
-  ShoppingBag, ArrowRight, Loader2, X, BarChart2, Shield, Star
+  ShoppingBag, ArrowRight, Loader2, X, BarChart2, Shield, Star, Sparkles
 } from 'lucide-react';
 import DecisionEngineCard from '../components/DecisionEngineCard';
 import ResaleForecastCard from '../components/ResaleForecastCard';
@@ -264,18 +264,18 @@ export default function URLAnalyzePage() {
                       <tr key={seller.id || seller.seller_name} className="hover:bg-slate-900/40">
                         <td className="py-2.5 pr-4 font-semibold">{seller.seller_name || 'Unknown'}</td>
                         <td className="py-2.5 px-4 text-right font-extrabold text-white">
-                          {seller.current_price
-                            ? formatINR(seller.current_price)
+                          {(seller.current_price != null || seller.price != null)
+                            ? formatINR(seller.current_price ?? seller.price)
                             : <span className="text-slate-500 font-normal">Unavailable from current data source.</span>
                           }
                         </td>
                         <td className="py-2.5 px-4 text-center">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            seller.availability === 'in_stock'
+                            seller.availability === 'in_stock' || seller.availability === 'In Stock'
                               ? 'bg-emerald-500/20 text-emerald-400'
                               : 'bg-slate-800 text-slate-400'
                           }`}>
-                            {seller.availability === 'in_stock' ? 'In Stock' : seller.availability || 'Unknown'}
+                            {seller.availability === 'in_stock' || seller.availability === 'In Stock' ? 'In Stock' : seller.availability || 'In Stock'}
                           </span>
                         </td>
                         <td className="py-2.5 text-right">
@@ -298,6 +298,78 @@ export default function URLAnalyzePage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* RELATED & ALTERNATIVE PRODUCTS */}
+          {result.related_products && result.related_products.length > 0 && (
+            <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                    <Sparkles className="w-4 h-4 text-cyan-400" />
+                    <span>Related &amp; Alternative Products</span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Explore similar {result.product?.category || 'products'} across top brands
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate(`/browse?category=${encodeURIComponent(result.product?.category || '')}`)}
+                  className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center space-x-1"
+                >
+                  <span>View All in {result.product?.category || 'Category'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                {result.related_products.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => navigate(`/product/${item.id}`)}
+                    className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 hover:bg-slate-900 transition-all cursor-pointer flex flex-col justify-between group space-y-3"
+                  >
+                    <div className="flex items-start space-x-3">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-16 h-16 object-contain bg-slate-950 p-1.5 rounded-xl border border-slate-800/80 group-hover:scale-105 transition-transform"
+                      />
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <span className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
+                          {item.brand}
+                        </span>
+                        <h4 className="text-xs font-bold text-white line-clamp-2 group-hover:text-cyan-300 transition-colors">
+                          {item.name}
+                        </h4>
+                        <div className="flex items-center space-x-1 text-[11px] text-amber-400">
+                          <Star className="w-3 h-3 fill-amber-400" />
+                          <span>{item.rating || '4.5'}</span>
+                          <span className="text-slate-500">({item.review_count || 120})</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                      <div>
+                        <span className="text-xs font-extrabold text-white">
+                          {formatINR(item.price)}
+                        </span>
+                        {item.previous_price && Number(item.previous_price) > Number(item.price) && (
+                          <span className="text-[10px] text-slate-500 line-through ml-1.5">
+                            {formatINR(item.previous_price)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] font-bold text-cyan-400 group-hover:translate-x-1 transition-transform flex items-center space-x-1">
+                        <span>Details</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
