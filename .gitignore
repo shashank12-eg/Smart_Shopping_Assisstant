@@ -4,10 +4,24 @@ backend/venv/
 backend/__pycache__/
 *.pyc
 
-# Production build
+# Production builds & artifacts
 frontend/dist/
 
-# Environment variables & IDE
+# Local databases & logs
+*.db
+database/*.db
+*.log
+
+# Environment variables & local configuration
 .env
+.env.local
+backend/.env
+frontend/.env.local
+
+# IDE & Editor settings
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db

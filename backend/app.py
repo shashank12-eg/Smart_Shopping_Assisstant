@@ -38,6 +38,51 @@ with app.app_context():
 
 
 # ---------------------------------------------------------------------------
+# GLOBAL JSON ERROR HANDLERS & ROOT ROUTES
+# ---------------------------------------------------------------------------
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify({'error': getattr(e, 'description', 'Bad Request')}), 400
+
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({'error': f"Endpoint '{request.path}' not found."}), 404
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return jsonify({'error': f"Method '{request.method}' not allowed on endpoint '{request.path}'."}), 405
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    app.logger.error(f"Internal server error: {e}")
+    return jsonify({'error': 'Internal server error. Please check server logs.'}), 500
+
+@app.errorhandler(Exception)
+def unhandled_exception(e):
+    app.logger.error(f"Unhandled exception on {request.method} {request.path}: {e}")
+    if isinstance(e, mysql.connector.Error):
+        return jsonify({'error': 'Database service error. Please check database connectivity.'}), 503
+    return jsonify({'error': 'An unexpected server error occurred.'}), 500
+
+
+@app.route('/')
+@app.route('/api')
+def api_root():
+    return jsonify({
+        'name': 'SmartShopping REST API',
+        'status': 'healthy',
+        'version': '1.0.0',
+        'endpoints': {
+            'health': '/api/health',
+            'auth_signup': '/api/auth/signup',
+            'auth_login': '/api/auth/login',
+            'products': '/api/products',
+            'categories': '/api/categories'
+        }
+    }), 200
+
+
+# ---------------------------------------------------------------------------
 # HELPER FUNCTIONS
 # ---------------------------------------------------------------------------
 def fetchall_dict(cursor):
@@ -105,24 +150,24 @@ def signup():
     if len(password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters long.'}), 400
 
-    conn   = get_db_connection()
-    cursor = conn.cursor()
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+        if cursor.fetchone():
+            cursor.close()
+            return jsonify({'error': 'An account with this email address already exists.'}), 400
 
-    cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
-    if cursor.fetchone():
+        password_hash = generate_password_hash(password)
+        cursor.execute(
+            "INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)",
+            (name, email, password_hash)
+        )
+        user_id = cursor.lastrowid
+        conn.commit()
         cursor.close()
+    finally:
         conn.close()
-        return jsonify({'error': 'An account with this email address already exists.'}), 400
-
-    password_hash = generate_password_hash(password)
-    cursor.execute(
-        "INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)",
-        (name, email, password_hash)
-    )
-    user_id = cursor.lastrowid
-    conn.commit()
-    cursor.close()
-    conn.close()
 
     token = jwt.encode({
         'user_id': user_id,
@@ -149,12 +194,14 @@ def login():
     if not re.match(EMAIL_REGEX, email):
         return jsonify({'error': 'Invalid email address or password.'}), 401
 
-    conn   = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-    user = fetchone_dict(cursor)
-    cursor.close()
-    conn.close()
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        user = fetchone_dict(cursor)
+        cursor.close()
+    finally:
+        conn.close()
 
     if not user or not check_password_hash(user['password_hash'], password):
         return jsonify({'error': 'Invalid email address or password.'}), 401

@@ -1,10 +1,11 @@
-
 services:
   db:
     image: mysql:8.0
+    container_name: smartshopping_db
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: local-root-password
-      MYSQL_DATABASE: smartshopping
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-local-root-password}
+      MYSQL_DATABASE: ${DB_NAME:-smartshopping}
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -12,28 +13,70 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+      start_period: 10s
+    networks:
+      - smartshopping_net
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: dockerfile
+    container_name: smartshopping_backend
+    restart: unless-stopped
     environment:
       DB_HOST: db
       DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: local-root-password
-      DB_NAME: smartshopping
-      SECRET_KEY: local-development-secret-change-me
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-local-root-password}
+      DB_NAME: ${DB_NAME:-smartshopping}
+      SECRET_KEY: ${SECRET_KEY:-local-development-secret-change-me}
+      AMAZON_API_KEY: ${AMAZON_API_KEY:-}
+      FLIPKART_API_KEY: ${FLIPKART_API_KEY:-}
+      MEESHO_API_KEY: ${MEESHO_API_KEY:-}
+      MYNTRA_API_KEY: ${MYNTRA_API_KEY:-}
+      RAPIDAPI_SHOPPING_KEY: ${RAPIDAPI_SHOPPING_KEY:-}
+      SERPAPI_KEY: ${SERPAPI_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "5000:5000"
+      - "${BACKEND_PORT:-5000}:5000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - smartshopping_net
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+    container_name: smartshopping_frontend
+    restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "3080:80"
+      - "${FRONTEND_PORT:-3080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - smartshopping_net
 
 volumes:
   mysql_data:
+    name: smartshopping_mysql_data
+
+networks:
+  smartshopping_net:
+    name: smartshopping_net
+    driver: bridge

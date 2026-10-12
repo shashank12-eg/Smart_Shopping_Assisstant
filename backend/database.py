@@ -1,33 +1,50 @@
+import time
 import mysql.connector
 from mysql.connector import Error
 from config import DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 
 
-def get_db_connection():
-    """Return a MySQL connection."""
-    conn = mysql.connector.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME
-    )
-    return conn
+def get_db_connection(max_retries=3, retry_delay=1):
+    """Return a MySQL connection with retry capability."""
+    last_err = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            conn = mysql.connector.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME
+            )
+            return conn
+        except Error as err:
+            last_err = err
+            if attempt < max_retries:
+                time.sleep(retry_delay)
+    raise last_err
 
 
-def create_database_if_not_exists():
-    """Create the MySQL database if it does not exist yet."""
-    conn = mysql.connector.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASSWORD
-    )
-    cursor = conn.cursor()
-    cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
-    conn.commit()
-    cursor.close()
-    conn.close()
+def create_database_if_not_exists(max_retries=15, retry_delay=2):
+    """Create the MySQL database if it does not exist yet, retrying while MySQL starts."""
+    for attempt in range(1, max_retries + 1):
+        try:
+            conn = mysql.connector.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                user=DB_USER,
+                password=DB_PASSWORD
+            )
+            cursor = conn.cursor()
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+            conn.commit()
+            cursor.close()
+            conn.close()
+            print(f"[DB] Database `{DB_NAME}` verified/created successfully.")
+            return True
+        except Error as err:
+            print(f"[DB] Attempt {attempt}/{max_retries}: Waiting for MySQL at {DB_HOST}:{DB_PORT} ({err}). Retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
+    raise RuntimeError(f"Could not connect to MySQL at {DB_HOST}:{DB_PORT} after {max_retries} attempts.")
 
 
 def init_db():
@@ -225,6 +242,14 @@ def init_db():
 
     conn.commit()
     cursor.close()
+
+    # Automatically populate initial catalog if database is empty
+    try:
+        from seed_data import seed_catalog_if_empty
+        seed_catalog_if_empty(conn)
+    except Exception as seed_err:
+        print(f"[DB Warning] Could not check or auto-seed empty catalog: {seed_err}")
+
     conn.close()
     print("[DB] All MySQL tables and safe schema migrations verified successfully.")
 

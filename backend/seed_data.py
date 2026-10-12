@@ -2,38 +2,9 @@ from werkzeug.security import generate_password_hash
 from database import init_db, get_db_connection
 
 
-def seed_database():
-    # Ensure all tables exist
-    init_db()
+SELLERS_LIST = ["Amazon", "Flipkart", "Meesho", "Myntra", "Reliance Digital", "Croma"]
 
-    conn   = get_db_connection()
-    cursor = conn.cursor()
-
-    # Clear existing data safely
-    cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
-    for tbl in ["product_sellers", "price_history", "wishlist",
-                "search_history", "recently_viewed", "price_alerts",
-                "products", "sellers", "users"]:
-        cursor.execute(f"TRUNCATE TABLE {tbl}")
-    cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
-    conn.commit()
-
-    # 1. Seed Demo User
-    demo_password_hash = generate_password_hash("password123")
-    cursor.execute(
-        "INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)",
-        ("Shashank Sharma", "shashank@gmail.com", demo_password_hash)
-    )
-
-    # 2. Seed Retailer Sellers (Amazon, Flipkart, Meesho, Myntra, Reliance Digital, Croma)
-    sellers_list = ["Amazon", "Flipkart", "Meesho", "Myntra", "Reliance Digital", "Croma"]
-    seller_ids   = {}
-    for s in sellers_list:
-        cursor.execute("INSERT INTO sellers (name) VALUES (%s)", (s,))
-        seller_ids[s] = cursor.lastrowid
-
-    # 3. Seed Canonical Products across 5 normalized categories
-    products_data = [
+PRODUCTS_DATA = [
         # --- LAPTOPS ---
         {
             "canonical_name": "Acer Nitro 5 Gaming Laptop AN515",
@@ -228,12 +199,24 @@ def seed_database():
         }
     ]
 
+def _populate_catalog(cursor):
+    """Insert default sellers, canonical products, and price history."""
+    seller_ids = {}
+    for s in SELLERS_LIST:
+        cursor.execute("SELECT id FROM sellers WHERE name = %s", (s,))
+        row = cursor.fetchone()
+        if row:
+            seller_ids[s] = row[0]
+        else:
+            cursor.execute("INSERT INTO sellers (name) VALUES (%s)", (s,))
+            seller_ids[s] = cursor.lastrowid
+
     months_list = [
         "Aug 2025", "Sep 2025", "Oct 2025", "Nov 2025", "Dec 2025", "Jan 2026",
         "Feb 2026", "Mar 2026", "Apr 2026", "May 2026", "Jun 2026", "Jul 2026"
     ]
 
-    for p in products_data:
+    for p in PRODUCTS_DATA:
         cursor.execute('''
             INSERT INTO products (
                 canonical_name, name, brand, model, category, price, previous_price, rating, review_count,
@@ -282,10 +265,68 @@ def seed_database():
                 (product_id, s_id, seller_price, p["previous_price"], p_url, "In Stock", "Provider Feed")
             )
 
+
+def seed_catalog_if_empty(conn=None):
+    """Seed default products and demo user only if database has no products, preserving any existing users."""
+    from database import get_db_connection
+    should_close = False
+    if conn is None:
+        conn = get_db_connection()
+        should_close = True
+
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM products")
+    count = cursor.fetchone()[0]
+    if count > 0:
+        cursor.close()
+        if should_close:
+            conn.close()
+        return
+
+    print("[DB] Empty products catalog detected. Automatically seeding initial products...")
+    # Seed demo user if no users exist
+    cursor.execute("SELECT COUNT(*) FROM users")
+    user_count = cursor.fetchone()[0]
+    if user_count == 0:
+        demo_password_hash = generate_password_hash("password123")
+        cursor.execute(
+            "INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)",
+            ("Shashank Sharma", "shashank@gmail.com", demo_password_hash)
+        )
+
+    _populate_catalog(cursor)
+    conn.commit()
+    cursor.close()
+    if should_close:
+        conn.close()
+    print("[DB] Initial catalog auto-seeded successfully!")
+
+
+def seed_database():
+    from database import init_db, get_db_connection
+    init_db()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+    for tbl in ["product_sellers", "price_history", "wishlist",
+                "search_history", "recently_viewed", "price_alerts",
+                "products", "sellers", "users"]:
+        cursor.execute(f"TRUNCATE TABLE {tbl}")
+    cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+    conn.commit()
+
+    demo_password_hash = generate_password_hash("password123")
+    cursor.execute(
+        "INSERT INTO users (name, email, password_hash) VALUES (%s, %s, %s)",
+        ("Shashank Sharma", "shashank@gmail.com", demo_password_hash)
+    )
+
+    _populate_catalog(cursor)
     conn.commit()
     cursor.close()
     conn.close()
-    print("[DB] Database successfully seeded with canonical products across all 5 normalized categories!")
+    print("[DB] Database completely reseeded with demo data!")
 
 
 if __name__ == '__main__':
