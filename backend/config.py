@@ -8,11 +8,42 @@ if os.path.exists(env_path):
     load_dotenv(env_path)
 
 # MySQL Database Configuration
-DB_HOST     = os.environ.get('DB_HOST',     'localhost')
-DB_PORT     = int(os.environ.get('DB_PORT', 3306))
-DB_USER     = os.environ.get('DB_USER',     'root')
-DB_PASSWORD = os.environ.get('DB_PASSWORD', 'root')
-DB_NAME     = os.environ.get('DB_NAME',     'smartshopping')
+
+# MySQL Database Configuration
+_is_railway = bool(
+    os.environ.get("RAILWAY_ENVIRONMENT_NAME")
+    or os.environ.get("RAILWAY_ENVIRONMENT")
+)
+
+DB_HOST = (os.getenv("DB_HOST") or "").strip()
+
+# If DB_HOST is missing or incorrectly set to localhost,
+# try Railway's MySQL-provided hostname.
+if not DB_HOST or DB_HOST.lower() in ("localhost", "127.0.0.1"):
+    DB_HOST = (os.getenv("MYSQLHOST") or "").strip()
+
+if not DB_HOST:
+    if _is_railway:
+        raise RuntimeError(
+            "Database host is missing. Set DB_HOST to your Railway MySQL hostname."
+        )
+    DB_HOST = "localhost"
+
+DB_PORT = int(
+    os.getenv("DB_PORT") or os.getenv("MYSQLPORT") or "3306"
+)
+DB_USER = os.getenv("DB_USER") or os.getenv("MYSQLUSER") or "root"
+DB_PASSWORD = (
+    os.getenv("DB_PASSWORD")
+    if os.getenv("DB_PASSWORD") is not None
+    else os.getenv("MYSQLPASSWORD", "root")
+)
+DB_NAME = (
+    os.getenv("DB_NAME")
+    or os.getenv("MYSQLDATABASE")
+    or "smartshopping"
+)
+
 
 SECRET_KEY  = os.environ.get('SECRET_KEY',  'smartshopping-secret-key-cse-2026')
 
